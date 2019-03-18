@@ -1,5 +1,6 @@
 var mysql = require("mysql");
 var inquirer = require("inquirer");
+var Table = require('cli-table');
 
 var connection = mysql.createConnection({
   host: "localhost",
@@ -14,58 +15,154 @@ var connection = mysql.createConnection({
 
 connection.connect(function(err) {
     if (err) throw err;
+    console.log("connected as id " + connection.threadId);
     start();
   });
 
 function start() {
+    
     inquirer.prompt([
         {
           name: "menu_options",
           type: "list",
           choices: ["View Products for Sale", "View Low Inventory", "Add to Inventory", "Add New Product"],
           message: "As a manager, what would you like to do?"
-        }
-        .then(function(answer) {
-            switch(answer.menu_options) {
-                case "View Products for Sale":
-                return productList();
-                break;
-                
-                case "View Low Inventory":
-                return lowInventory();
-
-                case "Add to Inventory":
-                return addInventory();
-
-                case "Add New Product":
-                return newProduct();
-            }
-        })
-    ]);
+        }])
+        .then(function(user) {
+          
+              if (user.menu_options === "View Products for Sale") {
+                productList();
+              } else if (user.menu_options === "View Low Inventory") {
+                lowInventory();
+              } else if (user.menu_options === "Add to Inventory") {
+                addInventory();
+              } else {
+                addProduct();
+              }
+        });
 }
 
 function productList() {
+    
+  var table = new Table({
+    head: ['ID', 'Item', 'Department', 'Price', 'Stock'],
+    colWidths: [10, 30, 30, 30, 30]
+  });
+
+  listInventory();
+
+  function listInventory() {
+    
     connection.query("SELECT * FROM products", function(err, results) {
-        if (err) throw err;
-    }
-    )};
+      for (var i = 0; i < results.length; i++) {
+
+        var itemID = results[i].item_id,
+            productName = results[i].product_name,
+            departmentName = results[i].department_name,
+            price = results[i].price,
+            stockQuantity = results[i].stock_quantity;
+        
+        table.push(
+          [itemID, productName, departmentName, price, stockQuantity]
+        );
+      }
+      console.log(table.toString());
+      start();
+    });
+  }
+}
 
 function lowInventory() {
 
-};
+    var table = new Table({
+        head: ['ID', 'Item', 'Department', 'Price', 'Stock'],
+        colWidths: [10, 30, 30, 30, 30]
+  });
+
+    listLowInventory();
+
+    function listLowInventory() {
+      connection.query("SELECT * FROM products", function(err, results) {
+        for (var i = 0; i < results.length; i++) {
+
+          if (results[i].stock_quantity <= 5) {
+            var itemID = results[i].item_id,
+                productName = results[i].product_name,
+                departmentName = results[i].department_name,
+                price = results[i].price,
+                stockQuantity = results[i].stock_quantity;
+            
+            table.push(
+              [itemID, productName, departmentName, price, stockQuantity]
+            );
+          }
+        }
+
+          console.log(table.toString());
+          start();
+      });
+    }
+}
 
 function addInventory() {
 
-};
-
-function newProduct() {
-    
+    inquirer.prompt([{
+        name: "addID",
+        type: "input",
+        message: "Please enter the ID number of the item you would like to add to inventory.",
+      },
+      {
+        name: "addNumber",
+        type: "input",
+        message: "How many untis of this item would you like to add to the inventory?",
+      }
+    ])
+    .then(function(managerAnswer) {
+        connection.query("UPDATE products SET ? WHERE ?", [{
+            stock_quantity: managerAnswer.add.ID
+        }, {
+            itemID: managerAnswer.addNumber
+        }], function(err, results) {
+        });
+      start();
+    });
 }
 
+function addProduct() {
 
+    inquirer.prompt([{
 
-  //switch case
-    //if view products for sale, list all item ids, names, prices and quanities
-    //if view low inventory, list all items with count<5
-    //if add to inventory, prompt manager with option to add more of any item
-    //if add new product, allow manager to add new item
+        name: "inputName",
+        type: "input",
+        message: "Please enter the item name of the new product",
+      },
+      {
+        name: "inputDepartment",
+        type: "input",
+        message: "Please enter which department the new product belongs",
+      },
+      {
+        name: "inputPrice",
+        type: "input",
+        message: "Please enter the price of the new product (0.00",
+      },
+      {
+        name: "inputStock",
+        type: "input",
+        message: "Please enter the stock quantity of the new product",
+      }
+
+    ])
+    .then(function(managerNew) {
+      
+        connection.query("INSERT INTO products SET ?", {
+
+          product_name: managerNew.inputName,
+          departmentName: managerNew.inputDepartment,
+          price: managerNew.inputPrice,
+          stock_quantity: managerNew.inputStock
+        }, function(err, results) {});
+        
+        start();
+    });
+}
