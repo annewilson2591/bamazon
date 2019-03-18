@@ -1,6 +1,6 @@
 var mysql = require("mysql");
 var inquirer = require("inquirer");
-//require console.table
+var Table = require('cli-table');
 
 var connection = mysql.createConnection({
   host: "localhost",
@@ -18,104 +18,145 @@ connection.connect(function(err) {
     start();
   });
 
-//on run, file will display all items available for sale with each column information
-
 function start() {
-    ///display all items
+
+    inquirer.prompt([{
+        name: "confirm",
+        type: "confirm",
+        message: "WELCOME TO BAMAZON! Would you like to view our inventory?",
+        default: true
+    }])
+    .then(function(user) {
+        if (user.confirm === true) {
+            inventory();
+        } else {
+            console.log("Come back another time!");
+        }
+    });
+}
+
+function inventory() {
+    var table = new Table({
+        head: ['ID', 'Item', 'Department', 'Price', 'In Stock'],
+        colWidths: [10, 30, 30, 30, 30]
+    });
+
+    listInventory();
+
+    function listInventory() {
+        connection.query("SELECT * FROM products", function(err, results) {
+            for (var i = 0; i < results.length; i++) {
+
+                var itemID = results[i].item_id,
+                    productName = results[i].product_name,
+                    departmentName = results[i].department_name,
+                    price = results[i].price,
+                    stockQuantity = results[i].stock_quantity;
+
+                table.push(
+                    [itemID, productName, departmentName, price, stockQuantity]
+                );
+            }
+            console.log(table.toString());
+            promptOrder();
+        });
+    }
+}
+    
+function promptOrder() {
+    
     inquirer.prompt({
         name: "bamazonPurchase",
-        type: "list",
+        type: "confirm",
         message: "Would you like to make a purchase today?",
-        choices: ["YES", "NO"]
-        ////how to first display the items, then trigger the prompt 
+        default: true
     })
-
-    //if user selects to make a purchase, run purchase options function, if not, end connection
-    .then(function(answer) {
-        if (answer.bamazonPurchase === "YES") {
+    .then(function(user) {
+        if (user.bamazonPurchase === true) {
             newPurchase();
+        } else {
+            console.log("Come back another time!"); 
         }
-        else{
-            connection.end();
-        }
-    })
+    });
 }
 
 
 function newPurchase() {
-    //query db for all available items
-    connection.query("SELECT * FROM products", function(err, results) {
-        if (err) throw err;
-    
+
     inquirer.prompt([
       {
         name: "item",
         type: "list",
-        choices: function() {
-            var choiceArray = [];
-            //for loop of available items from sql - how to specify id and name?
-            for (var i = 0; i < results.length; i++){
-                choiceArray.push(results[i].product_name);
-            }
-            return choiceArray;
-        },
+        // choices: function() {
+        //     var choiceArray = [];
+        //     //for loop of available items from sql - how to specify id and name?
+        //     for (var i = 0; i < results.length; i++){
+        //         choiceArray.push(results[i].product_name);
+        //     }
+        //     return choiceArray;
+        // },
         message: "Which item you would like to purchase?"
       },
       {
           name: "amount",
           type: "input",
           message: "How many units would you like to purchase?",
-          validate: function(value) {
-              if (isNaN(value) === false) {
-                  return true;
-              }
-              return false;
-          }
+        //   validate: function(value) {
+        //       if (isNaN(value) === false) {
+        //           return true;
+        //       }
+        //       return false;
+        //   }
       }
     ])
     .then(function(answer) {
-        //var chosenItem;
-        console.log(answer.amount);
-        console.log(results[0].item_id);
 
+        connection.query("SELECT * FROM products WHERE item_id=?", answer.itemID, function(err, results) {
+            
         for (var i = 0; i < results.length; i++) {
             if (results[i].product_name === answer.item) {
-                if (results[i].stock_quantity >= parseInt (answer.amount)) {
-                    console.log("Placing Order Now!");
-                    connection.query(
-                        "UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_name = ?",
-                        [answer.amount, answer.item]
-                    )
+                if (answer.amount > results[i].stock_quantity) {
+                    console.log("Insufficient quantity! Try again..");
+                } else {
+                    console.log("Placing order for " + answer.amount + answer.item + ". Your total is: " (results[i].price * answer.amount));
+
+                    var newStock = (results[i].stock_quantity - answer.amount);
+                    var purchaseID = (answer.item);
+                    console.log(newStock);
+                    secondPurchase(newStock, purchaseID);
                 }
             }
-        }
-       
-        // if (chosenItem.stock_quantity < parseInt(answer.choices)) 
-        // console.log("Placing Order Now!")
-        // {
-        //     connection.query(
-        //         "UPDATE products SET ? WHERE ?",
-        //         [
-        //             {
-        //                 //update sql quantity   
-        //             }
-        //         ],
-        //         function(error) {
-        //             if (error) throw err;
-        //             console.log("Product stock updated successfully");
-        //             start();
-        //         }
-        //     )
-        //     //check if enough quantity
-        //     //fill the order - update sql, display total cost of purchase
-        // };
-        // else {
-        //     console.log("Insufficient quantity! Try again..");
-        //     start();
-        // }
-    });
-});
+        };
+        })
+    })
 }
+
+function secondPurchase(newStock, purchaseID) {
+
+    inquirer.prompt([{
+        name: "second",
+        type: "confirm",
+        message: "Would you like to make another purchase today?",
+        default: true
+    }])    
+    .then(function(answer) {
+        if (answer.second === true) {
+
+            connection.query("UPDATE products SET ? WHERE ?", [
+                {
+                  stock_quantity: newStock
+                },
+                {
+                  item_id: purchaseID
+                }], function(err, results) {});
+                start();
+        } else {
+            console.log("Come back another time!");
+        }
+    });
+}
+      
+
 
 
 

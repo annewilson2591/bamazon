@@ -26,22 +26,42 @@ function start() {
           message: "As a manager, what would you like to do?"
         }
         .then(function(answer) {
-            switch(answer) {
+            switch(answer.menu_options) {
                 case "View Products for Sale":
-                return;
+                return productList();
+                break;
                 
                 case "View Low Inventory":
-                return;
+                return lowInventory();
 
                 case "Add to Inventory":
-                return;
+                return addInventory();
 
                 case "Add New Product":
-                return;
+                return newProduct();
             }
         })
     ]);
 }
+
+function productList() {
+    connection.query("SELECT * FROM products", function(err, results) {
+        if (err) throw err;
+    }
+    )};
+
+function lowInventory() {
+
+};
+
+function addInventory() {
+
+};
+
+function newProduct() {
+    
+}
+
 
 
   //switch case
