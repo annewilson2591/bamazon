@@ -9,6 +9,14 @@ Within the manager portal, you can view all inventory in the store, view all low
 
 ## Video Demo
 
+### Customer View:
+https://youtu.be/_mM7miH_FAM
+
+## Manager View:
+https://youtu.be/QN9sZqD8kps
+
+### Manager View:
+
 ## Built With
 
 * MySQL

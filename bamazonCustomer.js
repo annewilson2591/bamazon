@@ -31,6 +31,7 @@ function start() {
             inventory();
         } else {
             console.log("Come back another time!");
+            connection.end();
         }
     });
 }
@@ -65,14 +66,15 @@ function inventory() {
     
 function promptOrder() {
     
-    inquirer.prompt({
-        name: "bamazonPurchase",
-        type: "confirm",
-        message: "Would you like to make a purchase today?",
-        default: true
-    })
+    inquirer.prompt([
+        {
+          name: "confirm",
+          type: "confirm",
+          message: "Would you like to make a purchase today?",
+          default: true
+        }])
     .then(function(user) {
-        if (user.bamazonPurchase === true) {
+        if (user.confirm === true) {
             newPurchase();
         } else {
             console.log("Come back another time!"); 
@@ -85,62 +87,57 @@ function newPurchase() {
 
     inquirer.prompt([
       {
-        name: "item",
-        type: "list",
-        // choices: function() {
-        //     var choiceArray = [];
-        //     //for loop of available items from sql - how to specify id and name?
-        //     for (var i = 0; i < results.length; i++){
-        //         choiceArray.push(results[i].product_name);
-        //     }
-        //     return choiceArray;
-        // },
-        message: "Which item you would like to purchase?"
+        name: "itemID",
+        type: "input",
+        message: "What is the ID of the item you would like to purchase?",
       },
       {
-          name: "amount",
-          type: "input",
-          message: "How many units would you like to purchase?",
-        //   validate: function(value) {
-        //       if (isNaN(value) === false) {
-        //           return true;
-        //       }
-        //       return false;
-        //   }
+        name: "amount",
+        type: "input",
+        message: "How many units would you like to purchase?",
       }
     ])
-    .then(function(answer) {
+    .then(function(userPurchase) {
 
-        connection.query("SELECT * FROM products WHERE item_id=?", answer.itemID, function(err, results) {
+        connection.query("SELECT * FROM products WHERE item_id = ?", userPurchase.itemID, function(err, results) {
             
         for (var i = 0; i < results.length; i++) {
-            if (results[i].product_name === answer.item) {
-                if (answer.amount > results[i].stock_quantity) {
-                    console.log("Insufficient quantity! Try again..");
-                } else {
-                    console.log("Placing order for " + answer.amount + answer.item + ". Your total is: " (results[i].price * answer.amount));
+           
+            if (userPurchase.amount > results[i].stock_quantity) {
+                
+                console.log("Insufficient quantity! Try again..");
+                start();
+            
+            } else {
+                
+                console.log("---------------------------------");
+                console.log("Placing order for: " + userPurchase.amount + " units of " + results[i].product_name);
+                console.log("Your total is: $" + (results[i].price * userPurchase.amount));
+                console.log("---------------------------------");
 
-                    var newStock = (results[i].stock_quantity - answer.amount);
-                    var purchaseID = (answer.item);
-                    console.log(newStock);
-                    secondPurchase(newStock, purchaseID);
-                }
+                var newStock = (results[i].stock_quantity - userPurchase.amount);
+                var purchaseID = (userPurchase.itemID);
+                console.log("New stock quantity of " + results[i].product_name + " is: " + newStock);
+                console.log("---------------------------------");
+                secondPurchase(newStock, purchaseID);
             }
-        };
-        })
-    })
+        }
+        });
+    });
 }
+
 
 function secondPurchase(newStock, purchaseID) {
 
-    inquirer.prompt([{
-        name: "second",
-        type: "confirm",
-        message: "Would you like to make another purchase today?",
-        default: true
-    }])    
-    .then(function(answer) {
-        if (answer.second === true) {
+    inquirer.prompt([
+        {
+          name: "second",
+          type: "confirm",
+          message: "Would you like to make another purchase today?",
+          default: true
+        }])    
+        .then(function(answer) {
+            if (answer.second === true) {
 
             connection.query("UPDATE products SET ? WHERE ?", [
                 {
@@ -149,9 +146,12 @@ function secondPurchase(newStock, purchaseID) {
                 {
                   item_id: purchaseID
                 }], function(err, results) {});
-                start();
+                newPurchase();
         } else {
+            console.log("---------------------------------");
             console.log("Come back another time!");
+            console.log("---------------------------------");
+            connection.end();
         }
     });
 }

@@ -15,7 +15,7 @@ var connection = mysql.createConnection({
 
 connection.connect(function(err) {
     if (err) throw err;
-    console.log("connected as id " + connection.threadId);
+    //console.log("connected as id " + connection.threadId);
     start();
   });
 
@@ -67,7 +67,10 @@ function productList() {
         );
       }
       console.log(table.toString());
-      start();
+      console.log("---------------------------------");
+      
+        start();
+
     });
   }
 }
@@ -82,10 +85,11 @@ function lowInventory() {
     listLowInventory();
 
     function listLowInventory() {
+      
       connection.query("SELECT * FROM products", function(err, results) {
         for (var i = 0; i < results.length; i++) {
 
-          if (results[i].stock_quantity <= 5) {
+          if (results[i].stock_quantity <= 10) {
             var itemID = results[i].item_id,
                 productName = results[i].product_name,
                 departmentName = results[i].department_name,
@@ -97,8 +101,10 @@ function lowInventory() {
             );
           }
         }
-
+          console.log("---------------------------------");
+          console.log("The following products have a stock quantity of less than 10:")
           console.log(table.toString());
+          console.log("---------------------------------");
           start();
       });
     }
@@ -106,25 +112,34 @@ function lowInventory() {
 
 function addInventory() {
 
-    inquirer.prompt([{
+    inquirer.prompt([
+      {
         name: "addID",
         type: "input",
-        message: "Please enter the ID number of the item you would like to add to inventory.",
+        message: "Please enter the ID number of the item you would like to add to inventory",
       },
       {
         name: "addNumber",
         type: "input",
-        message: "How many untis of this item would you like to add to the inventory?",
+        message: "How many units of this item would you like to add to the inventory?",
       }
     ])
-    .then(function(managerAnswer) {
-        connection.query("UPDATE products SET ? WHERE ?", [{
-            stock_quantity: managerAnswer.add.ID
+    .then(function(managerAdd) {
+        
+        connection.query("UPDATE products SET ? WHERE ?", [
+        {
+            stock_quantity: managerAdd.addNumber
         }, {
-            itemID: managerAnswer.addNumber
+            item_ID: managerAdd.addID
         }], function(err, results) {
+
+        console.log("---------------------------------");
+        console.log("Adding " + managerAdd.addNumber + " units");
+        console.log("---------------------------------");
+
         });
-      start();
+
+        start();
     });
 }
 
@@ -144,7 +159,7 @@ function addProduct() {
       {
         name: "inputPrice",
         type: "input",
-        message: "Please enter the price of the new product (0.00",
+        message: "Please enter the price of the new product (0.00)",
       },
       {
         name: "inputStock",
@@ -162,6 +177,14 @@ function addProduct() {
           price: managerNew.inputPrice,
           stock_quantity: managerNew.inputStock
         }, function(err, results) {});
+
+        console.log("---------------------------------");
+        console.log("Manager added the following product to the inventory:")
+        console.log("New Product: " + managerNew.inputName);
+        console.log("Department: " + managerNew.inputDepartment);
+        console.log("Unit Price: " + managerNew.inputPrice);
+        console.log("Stock Quantity: " + managerNew.inputStock)
+        console.log("---------------------------------");
         
         start();
     });
